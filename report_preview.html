@@ -1,0 +1,215 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Health Tracker Preview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root{--bg:#f6f8fb;--card:#ffffff;--muted:#6b7280;--accent:#2563eb}
+    body{font-family:Inter,Segoe UI,Arial,system-ui;margin:20px;background:var(--bg);color:#111}
+    .card{background:var(--card);border-radius:10px;padding:18px;margin-bottom:16px;box-shadow:0 6px 18px rgba(16,24,40,0.06)}
+    h1{margin:0 0 8px 0;font-weight:600}
+    h2{margin:0 0 6px 0;font-weight:600}
+    .muted{color:var(--muted);font-size:0.95rem}
+    .diff-up{color:#b91c1c}
+    .diff-down{color:#15803d}
+    .diff-new{color:#0ea5e9}
+    .diff-bp{color:#6b21a8}
+    pre{background:#f8fafc;padding:12px;border-radius:6px}
+    aside{position:sticky;top:16px}
+    #peopleList li{margin-bottom:10px}
+    .personLink{font-weight:600;color:var(--accent);text-decoration:none}
+    .personLink.selected{background:linear-gradient(90deg,#eef2ff,#fff);padding:6px;border-radius:6px}
+    .metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:0.85rem;background:#f1f5f9;margin-left:8px}
+    @keyframes pulse { 0% { transform: scale(1); opacity: 1 } 50% { transform: scale(1.08); opacity: 0.85 } 100% { transform: scale(1); opacity: 1 } }
+    .pulse-badge{box-shadow:0 8px 22px rgba(16,24,40,0.08)}
+    button{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
+    button.secondary{background:#eee;color:#111}
+    .controls{display:flex;gap:8px}
+  </style>
+</head>
+<body>
+  <div style="display:flex;gap:16px">
+    <aside style="width:260px">
+      <div class="card">
+        <h3>People</h3>
+        <ul id="peopleList" style="padding-left:18px;margin-top:8px"></ul>
+        <form id="addPersonForm" style="margin-top:12px">
+          <input id="personName" placeholder="Add person" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px" />
+          <button style="margin-top:8px;width:100%">Add</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h4>Settings</h4>
+        <p class="muted">Significant change threshold (%)</p>
+        <input id="thresholdInput" type="number" value="10" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px" />
+      </div>
+
+      <div class="card">
+        <h4>Upload Report</h4>
+        <p class="muted">Select file to simulate upload for the selected person.</p>
+        <input type="file" id="uploadFile" accept=".pdf,image/*" />
+        <button id="uploadBtn" style="display:block;margin-top:8px">Upload (simulate)</button>
+      </div>
+    </aside>
+
+    <main style="flex:1">
+      <div id="reportsContainer"></div>
+    </main>
+  </div>
+
+  <script>
+    // Sample data
+    const people = [
+      { id: 1, name: 'Alice', dob: '1985-05-10' },
+      { id: 2, name: 'Bob', dob: '1978-11-02' }
+    ];
+
+    const reportsByPerson = {
+      1: [
+        { id: 101, filename: 'blood_tests_Jan2026.pdf', uploaded: '2026-01-15 10:24', metrics: { glucose: {value:110, unit:'mg/dL'}, cholesterol:{value:200,unit:'mg/dL'}, hdl:{value:45,unit:'mg/dL'}, ldl:{value:120,unit:'mg/dL'}, bp:{value:'130/85'} }, diffs: { glucose:{change:'increased', delta:10, from:100, to:110}, cholesterol:{change:'increased',delta:20,from:180,to:200}, hdl:{change:'decreased',delta:-5,from:50,to:45}, ldl:{change:'increased',delta:10,from:110,to:120}, bp:{change:'bp',from:'120/80',to:'130/85'}, vitaminD:{change:'new',to:{value:28,unit:'ng/mL'}} } }
+      ],
+      2: [
+        { id: 201, filename: 'checkup_Mar2026.jpg', uploaded: '2026-03-02 09:12', metrics: { weight:{value:82,unit:'kg'} }, diffs: {} }
+      ]
+    };
+
+    let selectedPersonId = 1;
+    let significantThreshold = Number(localStorage.getItem('significantThreshold') || 10);
+
+
+    function renderPeople(){
+      const ul = document.getElementById('peopleList'); ul.innerHTML='';
+      people.forEach(p=>{
+        const li = document.createElement('li');
+        li.style.marginBottom='8px';
+        li.innerHTML = `<a href="#" data-id="${p.id}" class="personLink">${p.name}</a><div class="muted">Last: ${reportsByPerson[p.id] && reportsByPerson[p.id][0] ? reportsByPerson[p.id][0].uploaded : '—'}</div>`;
+        ul.appendChild(li);
+      });
+      document.querySelectorAll('.personLink').forEach(a=>a.addEventListener('click', (e)=>{ e.preventDefault(); selectedPersonId = Number(a.dataset.id); renderReports(); }));
+    }
+
+    function renderReports(){
+      const container = document.getElementById('reportsContainer'); container.innerHTML='';
+      const header = document.createElement('div'); header.className='card';
+      const p = people.find(x=>x.id===selectedPersonId);
+      header.innerHTML = `<h1>${p.name}</h1><p class='muted'>DOB: ${p.dob || '—'}</p>`;
+      container.appendChild(header);
+
+      const list = reportsByPerson[selectedPersonId] || [];
+      list.forEach(rep=>{
+        const card = document.createElement('div'); card.className='card';
+        let metricsHtml = '<ul>';
+        for(const k in rep.metrics){ const v = rep.metrics[k]; metricsHtml += `<li><strong>${k}</strong>: ${v.value}${v.unit ? ' '+v.unit : ''}</li>` }
+        metricsHtml += '</ul>';
+
+        let diffsHtml = '<ul>';
+        for(const k in rep.diffs){ const d = rep.diffs[k];
+          if(d.change==='new') diffsHtml += `<li><strong>${k}</strong>: <span class='diff-new'>New → ${d.to.value || d.to}</span></li>`;
+          else if(d.change==='bp') diffsHtml += `<li><strong>${k}</strong>: <span class='diff-bp'>${d.from} → ${d.to}</span></li>`;
+          else if(d.change==='unknown') diffsHtml += `<li><strong>${k}</strong>: <span class='muted'>Changed</span></li>`;
+          else {
+            const arrow = d.delta>0 ? '▲' : (d.delta<0 ? '▼' : '→');
+            const color = d.delta>0 ? 'diff-up' : (d.delta<0 ? 'diff-down' : 'muted');
+            const pct = d.from ? ` (${((d.delta/d.from)*100).toFixed(1)}%)` : '';
+            diffsHtml += `<li><strong>${k}</strong>: <span class='${color}'>${arrow} ${Math.abs(d.delta).toFixed(2)}${pct} — ${d.from} → ${d.to}</span></li>`;
+          }
+        }
+        diffsHtml += '</ul>';
+
+        card.innerHTML = `<h2>${rep.filename}</h2><p class='muted'>Uploaded: ${rep.uploaded}</p>
+          <h3>Metrics</h3>${metricsHtml}
+          <h3>Diff vs previous</h3>${diffsHtml}
+          <h3>Extracted text (snippet)</h3><pre>...extracted text snippet...</pre>
+          <div style='margin-top:8px'>
+            <button class='exportPdf' data-id='${rep.id}'>Download PDF</button>
+            <button class='exportPng' data-id='${rep.id}'>Download PNG</button>
+          </div>`;
+        // compute significance for this sample data using rep.diffs
+        let sig = false;
+        for(const k in rep.diffs){
+          const d = rep.diffs[k];
+          if(d.change === 'new' || d.change === 'bp' || d.change === 'unknown'){ sig = true; break }
+          if(d.delta !== undefined && d.from !== undefined){
+            const from = Number(d.from) || 0;
+            const delta = Number(d.delta) || 0;
+            const pct = from !== 0 ? Math.abs(delta / from * 100) : Math.abs(delta);
+            if(pct >= significantThreshold){ sig = true; break }
+          }
+        }
+        if(sig){
+          const badge = document.createElement('div'); badge.className='badge pulse-badge'; badge.textContent='Significant'; badge.style.animation='pulse 1.6s infinite'; card.querySelector('h2').appendChild(badge);
+        }
+
+        container.appendChild(card);
+      });
+    }
+
+    // simulate add person
+    document.addEventListener('DOMContentLoaded', ()=>{
+      renderPeople(); renderReports();
+      const thresholdEl = document.getElementById('thresholdInput');
+      thresholdEl.value = significantThreshold;
+      thresholdEl.addEventListener('change', ()=>{ significantThreshold = Number(thresholdEl.value || 0); localStorage.setItem('significantThreshold', String(significantThreshold)); renderReports(); });
+      document.getElementById('addPersonForm').addEventListener('submit', (e)=>{
+        e.preventDefault(); const name = document.getElementById('personName').value.trim(); if(!name) return; const id=Date.now(); people.push({id,name}); reportsByPerson[id]=[]; document.getElementById('personName').value=''; renderPeople(); selectedPersonId=id; renderReports();
+      });
+
+      document.getElementById('uploadBtn').addEventListener('click', async ()=>{
+        const f = document.getElementById('uploadFile').files[0]; if(!f){ alert('Choose a file to upload or simulate'); return }
+        // Try real backend upload first
+        const url = `http://localhost:5000/api/people/${selectedPersonId}/upload`;
+        try{
+          const fd = new FormData(); fd.append('file', f, f.name);
+          const resp = await fetch(url, { method: 'POST', body: fd });
+          if(resp.ok){ const data = await resp.json(); // backend returned report info
+            // add to local preview from response
+            reportsByPerson[selectedPersonId] = reportsByPerson[selectedPersonId] || [];
+            reportsByPerson[selectedPersonId].unshift({ id: data.id || Date.now(), filename: data.filename || f.name, uploaded: new Date().toLocaleString(), metrics: data.metrics || {}, diffs: {} });
+            renderReports();
+            return;
+          }
+        }catch(err){ /* backend not available or failed, fall back */ }
+        // fallback simulation
+        const rep = { id: Date.now(), filename: f.name, uploaded: new Date().toLocaleString(), metrics: {}, diffs: {} };
+        reportsByPerson[selectedPersonId] = reportsByPerson[selectedPersonId] || [];
+        reportsByPerson[selectedPersonId].unshift(rep);
+        renderReports();
+      });
+
+      document.body.addEventListener('click', async (e)=>{
+        if(e.target.classList.contains('exportPdf')){
+          const id = e.target.dataset.id; // try backend
+          const url = `http://localhost:5000/api/report/${id}/export?format=pdf`;
+          try{
+            const resp = await fetch(url);
+            if(resp.ok){ const blob = await resp.blob(); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `report_${id}.pdf`; link.click(); return }
+            throw new Error('no');
+          }catch(err){
+            // fallback: use jsPDF to export a multi-page PDF from preview text
+            alert('Backend PDF export not available — generating PDF locally')
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+            const rep = (reportsByPerson[selectedPersonId]||[]).find(r=>String(r.id)===String(id));
+            let y=40; doc.setFontSize(16); doc.text(`Health Report: ${rep ? rep.filename : id}`, 40, y); y+=24; doc.setFontSize(11);
+            const lines = [];
+            if(rep && rep.metrics){ for(const k in rep.metrics){ const v=rep.metrics[k]; lines.push(`${k}: ${v.value || v}`); }}
+            lines.push(''); lines.push('Diffs:');
+            if(rep && rep.diffs){ for(const k in rep.diffs){ const d=rep.diffs[k]; lines.push(`${k}: ${d.change} ${d.delta || ''} ${d.from || ''} -> ${d.to || ''}`); }}
+            for(const line of lines){ if(y>720){ doc.addPage(); y=40 } doc.text(String(line),40,y); y+=14 }
+            const pdfBlob = doc.output('blob'); const link = document.createElement('a'); link.href = URL.createObjectURL(pdfBlob); link.download = `report_${id}.pdf`; link.click();
+          }
+        }
+        if(e.target.classList.contains('exportPng')){
+          const id = e.target.dataset.id; const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 600; const ctx = canvas.getContext('2d'); ctx.fillStyle='white'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='black'; ctx.font='16px Arial'; ctx.fillText('Health Report (preview)',20,40); ctx.fillText('Report id: '+id,20,70); ctx.fillText('PNG export',20,100); const link = document.createElement('a'); link.href = canvas.toDataURL('image/png'); link.download = `report_${id}.png`; link.click(); }
+      });
+    });
+  </script>
+</body>
+</html>

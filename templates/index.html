@@ -1,0 +1,18 @@
+{% extends 'base.html' %} {% block content %}
+<div class="card">
+  <h2>People</h2>
+  <ul>
+    {% for p in people %}
+    <li>
+      <a href="{{ url_for('person_detail', person_id=p.id) }}">{{ p.name }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+  <h3>Add Person</h3>
+  <form method="post" action="{{ url_for('add_person') }}">
+    <input name="name" placeholder="Full name" />
+    <input name="dob" placeholder="DOB (optional)" />
+    <button type="submit">Add</button>
+  </form>
+</div>
+{% endblock %}

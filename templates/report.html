@@ -1,0 +1,58 @@
+{% extends 'base.html' %} {% block content %}
+<div class="card">
+  <h2>Report: {{ report.filename }}</h2>
+  <p class="muted">
+    Uploaded: {{ report.uploaded_at.strftime('%Y-%m-%d %H:%M') }}
+  </p>
+  <p>
+    <a href="{{ url_for('uploaded_file', filename=report.filename) }}"
+      >Download file</a
+    >
+  </p>
+  <form
+    method="post"
+    action="{{ url_for('delete_report', report_id=report.id) }}"
+    onsubmit="return confirm('Delete this report?');"
+  >
+    <button type="submit" style="color: #900">Delete Report</button>
+  </form>
+
+  <h3>Extracted Metrics</h3>
+  <ul>
+    {% for k, v in report.metrics().items() %}
+    <li>
+      <strong>{{ k }}</strong>: {% if v.value is defined %} {{ v.value }}{% if
+      v.unit %} {{ v.unit }}{% endif %} {% else %} {{ v }} {% endif %}
+    </li>
+    {% else %}
+    <li class="muted">No metrics extracted</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Comparison with previous</h3>
+  {% if prev %}
+  <p class="muted">
+    Previous: {{ prev.filename }} ({{ prev.uploaded_at.strftime('%Y-%m-%d') }})
+  </p>
+  <ul>
+    {% for k, d in diffs.items() %}
+    <li>
+      <strong>{{ k }}</strong>: {% if d.change == 'new' %}New value {{ d.to }}{%
+      elif d.change == 'bp' %}From {{ d.from }} to {{ d.to }}{% elif d.change ==
+      'unknown' %}Changed from {{ d.from }} to {{ d.to }}{% else %}{{ d.change
+      }} by {{ '%.2f'|format(d.delta) }} ({{ d.from }} → {{ d.to }}){% endif %}
+    </li>
+    {% else %}
+    <li class="muted">No diffs available</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No previous report to compare.</p>
+  {% endif %}
+
+  <h3>Raw extracted text</h3>
+  <pre style="white-space: pre-wrap; background: #f8f8f8; padding: 8px">
+{{ report.extracted_text or 'No text extracted' }}</pre
+  >
+</div>
+{% endblock %}
