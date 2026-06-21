@@ -12,8 +12,6 @@ export default function Person({ id, goBack, threshold = 10 }) {
   const [editingDob, setEditingDob] = useState(false);
   const [dobInput, setDobInput] = useState("");
   const [savingDob, setSavingDob] = useState(false);
-  const [editingDob, setEditingDob] = useState(false);
-  const [dobInput, setDobInput] = useState("");
 
   useEffect(() => {
     fetchPerson();
