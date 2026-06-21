@@ -36,11 +36,17 @@ export default function App() {
   function addPerson(e) {
     e.preventDefault();
     if (!name) return;
-    axios.post(`${API}/people`, { name, dob }).then(() => {
-      setName("");
-      setDob("");
-      fetchPeople();
-    });
+    axios
+      .post(`${API}/people`, { name, dob })
+      .then(() => {
+        setName("");
+        setDob("");
+        fetchPeople();
+      })
+      .catch((err) => {
+        console.error('Add person failed', err);
+        alert('Failed to add person — check backend is running and see console for details.');
+      });
   }
 
   function startEdit(p){ setEditingId(p.id); setEditName(p.name||''); setEditDob(p.dob||''); }
