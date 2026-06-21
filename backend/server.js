@@ -255,9 +255,19 @@ app.get("/api/report/:id/export", (req, res) => {
       lines.push(`Uploaded: ${row.uploaded_at}`);
       lines.push("");
       lines.push("Extracted metrics:");
-      for (const k of Object.keys(metrics)) {
+      if (!metrics || Object.keys(metrics).length === 0) {
+        lines.push(" (no structured metrics parsed)");
+      }
+      for (const k of Object.keys(metrics || {})) {
         const v = metrics[k];
         lines.push(` - ${k}: ${v.value || v}`);
+      }
+      // Always include the raw extracted text as a fallback so exported PDFs are not blank
+      if (row.extracted_text) {
+        lines.push("");
+        lines.push("Extracted text:");
+        const textLines = String(row.extracted_text).split(/\r?\n/).slice(0, 500);
+        for (const l of textLines) lines.push(l);
       }
       // PDF
       if (fmt === "pdf") {

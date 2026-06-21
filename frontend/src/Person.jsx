@@ -11,6 +11,9 @@ export default function Person({ id, goBack, threshold = 10 }) {
   const [significantMap, setSignificantMap] = useState({});
   const [editingDob, setEditingDob] = useState(false);
   const [dobInput, setDobInput] = useState("");
+  const [savingDob, setSavingDob] = useState(false);
+  const [editingDob, setEditingDob] = useState(false);
+  const [dobInput, setDobInput] = useState("");
 
   useEffect(() => {
     fetchPerson();
@@ -61,6 +64,7 @@ export default function Person({ id, goBack, threshold = 10 }) {
       fetchPerson();
     } catch (err) {
       console.error(err);
+      alert('Upload failed. Check backend and OCR dependencies (Tesseract, Poppler).');
     }
     setLoading(false);
   }
@@ -89,8 +93,17 @@ export default function Person({ id, goBack, threshold = 10 }) {
 
   function startEditDob(){ setDobInput(person.dob || ''); setEditingDob(true); }
   function cancelEditDob(){ setDobInput(person.dob || ''); setEditingDob(false); }
-  function saveDob(){
-    axios.put(`${API}/people/${id}`, { dob: dobInput }).then(()=>{ setEditingDob(false); fetchPerson(); }).catch(e=>{ console.error(e); });
+  async function saveDob(){
+    setSavingDob(true);
+    try{
+      await axios.put(`${API}/people/${id}`, { dob: dobInput });
+      setEditingDob(false);
+      fetchPerson();
+    }catch(e){
+      console.error(e);
+      alert('Failed to save DOB. Check backend connection.');
+    }
+    setSavingDob(false);
   }
 
   return (
@@ -101,7 +114,7 @@ export default function Person({ id, goBack, threshold = 10 }) {
         DOB: {editingDob ? (
           <span>
             <input type="date" value={dobInput} onChange={e=>setDobInput(e.target.value)} />
-            <button onClick={saveDob} style={{marginLeft:8}}>Save</button>
+            <button onClick={saveDob} disabled={savingDob} style={{marginLeft:8}}>{savingDob? 'Saving...':'Save'}</button>
             <button onClick={cancelEditDob} style={{marginLeft:8}}>Cancel</button>
           </span>
         ) : (
