@@ -1,0 +1,11 @@
+node_modules/
+uploads/
+backend/health.db
+**/package-lock.json
+**/yarn.lock
+response.json
+.env
+.DS_Store
+/.vscode/
+dist/
+build/
