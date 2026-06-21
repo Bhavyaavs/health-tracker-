@@ -185,6 +185,8 @@ export default function Person({ id, goBack, threshold = 10 }) {
                   {badge && <span className="pulse-badge" style={{marginLeft:8,display:'inline-block',background:'#fee2e2',color:'#b91c1c',padding:'4px 8px',borderRadius:999,animation:'pulse 1.6s infinite'}}> Significant</span>}
                 </div>
                 <div style={{marginLeft:'auto'}}>
+                    <button onClick={()=>{ setCompareLeft(String(r.id)); }} style={{marginLeft:8}}>Set older</button>
+                    <button onClick={()=>{ setCompareRight(String(r.id)); }} style={{marginLeft:8}}>Set newer</button>
                   <button onClick={() => viewReport(r.id)} style={{ marginLeft: 8 }}>
                     View
                   </button>
