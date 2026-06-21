@@ -48,6 +48,11 @@ export default function Person({ id, goBack, threshold = 10 }) {
     })
   }, [person, threshold]);
 
+  // keep dobInput synced when person loads
+  useEffect(()=>{
+    if(person) setDobInput(person.dob || '');
+  }, [person]);
+
   async function upload(e) {
     e.preventDefault();
     if (!file) return;
@@ -83,11 +88,6 @@ export default function Person({ id, goBack, threshold = 10 }) {
   }
 
   if (!person) return <div style={{ padding: 20 }}>Loading...</div>;
-
-  // keep dobInput synced when person loads
-  useEffect(()=>{
-    if(person) setDobInput(person.dob || '');
-  }, [person]);
 
   function startEditDob(){ setDobInput(person.dob || ''); setEditingDob(true); }
   function cancelEditDob(){ setDobInput(person.dob || ''); setEditingDob(false); }
