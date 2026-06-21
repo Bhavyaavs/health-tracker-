@@ -72,3 +72,5 @@ Prerequisites
 	- Poppler (`pdftoppm`) for PDF page conversion.
 
 If you need help installing those on Windows, tell me your environment and I'll provide commands.
+
+Deployment: pushed vercel config to trigger static SPA build and routing fixes.
