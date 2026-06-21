@@ -7,6 +7,10 @@ const API = "http://localhost:5000/api";
 export default function App() {
   const [people, setPeople] = useState([]);
   const [name, setName] = useState("");
+  const [dob, setDob] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editDob, setEditDob] = useState("");
   const [threshold, setThreshold] = useState(() => {
     const v = localStorage.getItem('significantThreshold');
     return v ? Number(v) : 10;
@@ -32,11 +36,17 @@ export default function App() {
   function addPerson(e) {
     e.preventDefault();
     if (!name) return;
-    axios.post(`${API}/people`, { name }).then(() => {
+    axios.post(`${API}/people`, { name, dob }).then(() => {
       setName("");
+      setDob("");
       fetchPeople();
     });
   }
+
+  function startEdit(p){ setEditingId(p.id); setEditName(p.name||''); setEditDob(p.dob||''); }
+  function cancelEdit(){ setEditingId(null); setEditName(''); setEditDob(''); }
+  function saveEdit(){ if(!editingId) return; axios.put(`${API}/people/${editingId}`, { name: editName, dob: editDob }).then(()=>{ fetchPeople(); cancelEdit(); }).catch(e=>console.error(e)); }
+  function deletePerson(id){ if(!confirm('Delete person and all reports?')) return; axios.delete(`${API}/people/${id}`).then(()=>fetchPeople()).catch(e=>console.error(e)); }
 
   // simple router: #/person/:id
   if (route.startsWith("#/person/")) {
@@ -74,17 +84,27 @@ export default function App() {
         <h3>People</h3>
         <ul>
           {people.map((p) => (
-            <li key={p.id}>
-              {p.name} — <a href={`#/person/${p.id}`}>open</a>
+            <li key={p.id} style={{marginBottom:8}}>
+              {editingId===p.id ? (
+                <span>
+                  <input value={editName} onChange={e=>setEditName(e.target.value)} />
+                  <input type="date" value={editDob||''} onChange={e=>setEditDob(e.target.value)} style={{marginLeft:8}} />
+                  <button onClick={saveEdit} style={{marginLeft:8}}>Save</button>
+                  <button onClick={cancelEdit} style={{marginLeft:8}}>Cancel</button>
+                </span>
+              ) : (
+                <span>
+                  <strong>{p.name}</strong> — <a href={`#/person/${p.id}`}>open</a>
+                  <button onClick={()=>startEdit(p)} style={{marginLeft:8}}>Edit</button>
+                  <button onClick={()=>deletePerson(p.id)} style={{marginLeft:8,color:'#900'}}>Delete</button>
+                </span>
+              )}
             </li>
           ))}
         </ul>
-        <form onSubmit={addPerson}>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name"
-          />
+        <form onSubmit={addPerson} style={{display:'flex',gap:8,alignItems:'center'}}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+          <input type="date" value={dob} onChange={e=>setDob(e.target.value)} style={{width:160}} />
           <button>Add</button>
         </form>
       </section>

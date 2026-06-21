@@ -161,6 +161,30 @@ app.put('/api/people/:id', (req, res) => {
   });
 });
 
+// delete person and their reports
+app.delete('/api/people/:id', (req, res) => {
+  const id = req.params.id;
+  db.get('SELECT * FROM person WHERE id = ?', [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'not found' });
+    // delete reports and files
+    db.all('SELECT * FROM report WHERE person_id = ?', [id], (err2, reports) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      reports = reports || [];
+      for (const r of reports) {
+        try { const fp = path.join(UPLOAD_DIR, r.filename); if (fs.existsSync(fp)) fs.unlinkSync(fp); } catch(e){}
+      }
+      db.run('DELETE FROM report WHERE person_id = ?', [id], function(err3){
+        if (err3) return res.status(500).json({ error: err3.message });
+        db.run('DELETE FROM person WHERE id = ?', [id], function(err4){
+          if (err4) return res.status(500).json({ error: err4.message });
+          res.json({ ok: true });
+        });
+      });
+    });
+  });
+});
+
 app.post("/api/people/:id/upload", upload.single("file"), async (req, res) => {
   const personId = req.params.id;
   const file = req.file;
