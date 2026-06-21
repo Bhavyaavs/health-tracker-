@@ -1,0 +1,8 @@
+{
+  "name": "health-tracker-monorepo-helper",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install --no-audit --no-fund && npm run build"
+  }
+}
