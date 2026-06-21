@@ -78,14 +78,23 @@ export default function Person({ id, goBack, threshold = 10 }) {
 
   function pickCompareDefaults(){
     if(!person || !person.reports || person.reports.length<2) return;
-    setCompareLeft(person.reports[1].id || person.reports[0].id);
-    setCompareRight(person.reports[0].id);
+    setCompareLeft(String(person.reports[1].id || person.reports[0].id));
+    setCompareRight(String(person.reports[0].id));
   }
 
   function runCompare(){
     if(!compareLeft || !compareRight) { alert('Select two reports to compare'); return }
+    if(compareLeft === compareRight){ alert('Select two different reports'); return }
     axios.get(`${API}/compare?left=${compareLeft}&right=${compareRight}`).then(r=>setCompareResult(r.data)).catch(e=>{ console.error(e); alert('Compare failed') });
   }
+
+  // auto-populate compare selectors when reports change
+  useEffect(()=>{
+    if(!person || !person.reports) return;
+    if(person.reports.length >= 2 && (!compareLeft || !compareRight)){
+      pickCompareDefaults();
+    }
+  }, [person]);
 
   function viewReport(rid) {
     axios
