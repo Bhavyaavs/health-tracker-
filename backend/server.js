@@ -247,6 +247,25 @@ app.get("/api/report/:id/details", (req, res) => {
   });
 });
 
+// compare two arbitrary reports by id: left -> right
+app.get('/api/compare', (req, res) => {
+  const leftId = req.query.left;
+  const rightId = req.query.right;
+  if (!leftId || !rightId) return res.status(400).json({ error: 'left and right query params required' });
+  db.get('SELECT * FROM report WHERE id = ?', [leftId], (err, left) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!left) return res.status(404).json({ error: 'left not found' });
+    db.get('SELECT * FROM report WHERE id = ?', [rightId], (err2, right) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      if (!right) return res.status(404).json({ error: 'right not found' });
+      const leftMetrics = left.metrics_json ? JSON.parse(left.metrics_json) : {};
+      const rightMetrics = right.metrics_json ? JSON.parse(right.metrics_json) : {};
+      const diffs = computeDiff(leftMetrics, rightMetrics);
+      res.json({ left, right, diffs });
+    });
+  });
+});
+
 app.post("/api/report/:id/delete", (req, res) => {
   const id = req.params.id;
   db.get("SELECT * FROM report WHERE id = ?", [id], (err, row) => {

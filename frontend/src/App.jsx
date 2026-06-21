@@ -72,8 +72,13 @@ export default function App() {
   return (
     <div style={{ padding: 20, fontFamily: "Segoe UI,Arial" }}>
       <style>{`
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1 } 50% { transform: scale(1.08); opacity: 0.85 } 100% { transform: scale(1); opacity: 1 } }
-        .pulse-badge { box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
+        :root{--bg:#f6efe6;--card:#fffaf2;--muted:#6b5b4a;--accent:#c59b70}
+        body{background:var(--bg)}
+        .card { background: var(--card); border-radius:10px; padding:12px; box-shadow:0 6px 18px rgba(16,24,40,0.04)}
+        h1,h2,h3{color:var(--muted)}
+        a { color: var(--accent) }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1 } 50% { transform: scale(1.04); opacity: 0.85 } 100% { transform: scale(1); opacity: 1 } }
+        .pulse-badge { box-shadow: 0 6px 20px rgba(0,0,0,0.04); background: #fff3eb; }
       `}</style>
       <h1>Health Tracker (React)</h1>
       <div style={{float:'right'}}>

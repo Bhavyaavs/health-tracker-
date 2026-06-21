@@ -12,6 +12,9 @@ export default function Person({ id, goBack, threshold = 10 }) {
   const [editingDob, setEditingDob] = useState(false);
   const [dobInput, setDobInput] = useState("");
   const [savingDob, setSavingDob] = useState(false);
+  const [compareLeft, setCompareLeft] = useState("");
+  const [compareRight, setCompareRight] = useState("");
+  const [compareResult, setCompareResult] = useState(null);
 
   useEffect(() => {
     fetchPerson();
@@ -64,12 +67,24 @@ export default function Person({ id, goBack, threshold = 10 }) {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setFile(null);
-      fetchPerson();
+      await fetchPerson();
+      alert('Upload complete — report added.');
     } catch (err) {
       console.error(err);
       alert('Upload failed. Check backend and OCR dependencies (Tesseract, Poppler).');
     }
     setLoading(false);
+  }
+
+  function pickCompareDefaults(){
+    if(!person || !person.reports || person.reports.length<2) return;
+    setCompareLeft(person.reports[1].id || person.reports[0].id);
+    setCompareRight(person.reports[0].id);
+  }
+
+  function runCompare(){
+    if(!compareLeft || !compareRight) { alert('Select two reports to compare'); return }
+    axios.get(`${API}/compare?left=${compareLeft}&right=${compareRight}`).then(r=>setCompareResult(r.data)).catch(e=>{ console.error(e); alert('Compare failed') });
   }
 
   function viewReport(rid) {
@@ -133,6 +148,20 @@ export default function Person({ id, goBack, threshold = 10 }) {
           {loading ? "Uploading..." : "Upload"}
         </button>
       </form>
+
+      <h4 style={{marginTop:12}}>Compare Reports</h4>
+      <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <select value={compareLeft} onChange={e=>setCompareLeft(e.target.value)}>
+          <option value="">Select older</option>
+          {person.reports && person.reports.map(r=> <option key={r.id} value={r.id}>{r.filename} ({new Date(r.uploaded_at).toLocaleString()})</option>)}
+        </select>
+        <select value={compareRight} onChange={e=>setCompareRight(e.target.value)}>
+          <option value="">Select newer</option>
+          {person.reports && person.reports.map(r=> <option key={r.id} value={r.id}>{r.filename} ({new Date(r.uploaded_at).toLocaleString()})</option>)}
+        </select>
+        <button onClick={pickCompareDefaults}>Auto</button>
+        <button onClick={runCompare}>Compare</button>
+      </div>
 
       <h3>Reports</h3>
       <ul>
@@ -232,6 +261,17 @@ export default function Person({ id, goBack, threshold = 10 }) {
           >
             {selectedReport.report.extracted_text}
           </pre>
+        </div>
+      )}
+
+      {compareResult && (
+        <div style={{marginTop:16,padding:12,border:'1px solid #ddd',background:'#fffaf2'}}>
+          <h4>Compare: {compareResult.left.filename} → {compareResult.right.filename}</h4>
+          <ul>
+            {Object.entries(compareResult.diffs).map(([k,d])=> (
+              <li key={k}><strong>{k}</strong>: {d.change==='new'? (<span style={{color:'#0ea5e9'}}>New → {String(d.to && (d.to.value||d.to))}</span>) : d.change==='bp' ? (<span style={{color:'#6a1b9a'}}>{d.from} → {d.to}</span>) : d.change==='unknown' ? (<span>Changed</span>) : (<span style={{color: d.delta>0? '#b91c1c':'#15803d'}}>{d.delta>0? '▲':'▼'} {Math.abs(d.delta).toFixed(2)} ({d.from} → {d.to})</span>)}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
