@@ -9,6 +9,8 @@ export default function Person({ id, goBack, threshold = 10 }) {
   const [loading, setLoading] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [significantMap, setSignificantMap] = useState({});
+  const [editingDob, setEditingDob] = useState(false);
+  const [dobInput, setDobInput] = useState("");
 
   useEffect(() => {
     fetchPerson();
@@ -80,11 +82,34 @@ export default function Person({ id, goBack, threshold = 10 }) {
 
   if (!person) return <div style={{ padding: 20 }}>Loading...</div>;
 
+  // keep dobInput synced when person loads
+  useEffect(()=>{
+    if(person) setDobInput(person.dob || '');
+  }, [person]);
+
+  function startEditDob(){ setDobInput(person.dob || ''); setEditingDob(true); }
+  function cancelEditDob(){ setDobInput(person.dob || ''); setEditingDob(false); }
+  function saveDob(){
+    axios.put(`${API}/people/${id}`, { dob: dobInput }).then(()=>{ setEditingDob(false); fetchPerson(); }).catch(e=>{ console.error(e); });
+  }
+
   return (
     <div style={{ padding: 20 }}>
       <button onClick={goBack}>← Back</button>
       <h2>{person.name}</h2>
-      <p>DOB: {person.dob || "—"}</p>
+      <p>
+        DOB: {editingDob ? (
+          <span>
+            <input type="date" value={dobInput} onChange={e=>setDobInput(e.target.value)} />
+            <button onClick={saveDob} style={{marginLeft:8}}>Save</button>
+            <button onClick={cancelEditDob} style={{marginLeft:8}}>Cancel</button>
+          </span>
+        ) : (
+          <span>
+            {person.dob || "—"} <button onClick={startEditDob} style={{marginLeft:8}}>Edit</button>
+          </span>
+        )}
+      </p>
 
       <h3>Upload Report (PDF or image)</h3>
       <form onSubmit={upload}>

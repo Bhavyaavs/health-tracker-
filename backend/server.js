@@ -142,6 +142,25 @@ app.get("/api/people/:id", (req, res) => {
   });
 });
 
+// update person (name, dob)
+app.put('/api/people/:id', (req, res) => {
+  const id = req.params.id;
+  const { name, dob } = req.body;
+  db.get('SELECT * FROM person WHERE id = ?', [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'not found' });
+    const newName = name !== undefined ? name : row.name;
+    const newDob = dob !== undefined ? dob : row.dob;
+    db.run('UPDATE person SET name = ?, dob = ? WHERE id = ?', [newName, newDob, id], function(err2){
+      if (err2) return res.status(500).json({ error: err2.message });
+      db.get('SELECT * FROM person WHERE id = ?', [id], (err3, updated) => {
+        if (err3) return res.status(500).json({ error: err3.message });
+        res.json({ person: updated });
+      });
+    });
+  });
+});
+
 app.post("/api/people/:id/upload", upload.single("file"), async (req, res) => {
   const personId = req.params.id;
   const file = req.file;
